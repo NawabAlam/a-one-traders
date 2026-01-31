@@ -156,7 +156,7 @@ export default function ContactPage() {
         <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
           <h3 className="text-xl font-bold mb-8 text-gray-900">
             Send us an Email{" "}
-            <span className="text-sm text-gray-500">(to both)</span>
+            <span className="text-sm text-gray-500"></span>
           </h3>
           <form onSubmit={handleEmailSubmit} className="space-y-5">
             <input
