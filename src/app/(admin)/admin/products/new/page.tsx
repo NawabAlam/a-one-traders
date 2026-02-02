@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createProduct, updateProduct } from "@/lib/products";
 import { uploadProductImage } from "@/lib/storage";
+import { getAllCategories } from "@/lib/category"; // ✅ ADDED
 
 type Attribute = {
   label: string;
@@ -11,8 +13,11 @@ type Attribute = {
 };
 
 export default function AdminAddProductPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState<any[]>([]); // ✅ NEW
+  const [loadingCategories, setLoadingCategories] = useState(true); // ✅ NEW
   const [priceType, setPriceType] = useState<
     "fixed" | "starting" | "on_request"
   >("starting");
@@ -66,6 +71,23 @@ export default function AdminAddProductPage() {
     },
   ]);
 
+  // ✅ FETCH CATEGORIES FROM FIRESTORE
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const data = await getAllCategories();
+        setCategories(data.filter((cat: any) => cat.isActive)); // Only active categories
+      } catch (error) {
+        console.error("Failed to load categories:", error);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
   const addAttribute = () => {
     setAttributes([...attributes, { label: "", value: "" }]);
   };
@@ -91,9 +113,8 @@ export default function AdminAddProductPage() {
     }
 
     try {
-      setSaving(true); // ✅ START LOADER
+      setSaving(true);
 
-      // 1️⃣ Create product WITHOUT images
       const productId = await createProduct({
         name,
         category,
@@ -105,34 +126,23 @@ export default function AdminAddProductPage() {
         images: [],
       });
 
-      // 2️⃣ Upload images using REAL product ID
       const uploadedImages: string[] = [];
-
       for (const file of imageFiles) {
         const url = await uploadProductImage(file, productId);
         uploadedImages.push(url);
       }
 
-      // 3️⃣ Update product with image URLs
       await updateProduct(productId, {
         images: uploadedImages,
       });
 
       alert("✅ Product added successfully");
-
-      // reset form
-      setName("");
-      setCategory("");
-      setPrice("");
-      setMoq("");
-      setDescription("");
-      setAttributes([{ label: "", value: "" }]);
-      setImageFiles([]);
+      router.push("/admin/products");
     } catch (err) {
       console.error(err);
       alert("❌ Error saving product");
     } finally {
-      setSaving(false); // ✅ STOP LOADER
+      setSaving(false);
     }
   };
 
@@ -147,54 +157,52 @@ export default function AdminAddProductPage() {
     setImageFiles((prev) => [...prev, ...selected]);
   };
 
+  const isFixedAttribute = (label: string) => FIXED_ATTRIBUTE_LABELS.includes(label);
+
   return (
-    <div className="max-w-3xl mx-auto bg-white p-6 rounded-xl border space-y-6">
-      <h1 className="text-2xl font-bold text-(--text-primary)">
-        Add New Product
-      </h1>
+    <div className="max-w-3xl mx-auto bg-white p-4 sm:p-6 rounded-xl border space-y-6">
+      <h1 className="text-2xl font-bold">Add New Product</h1>
 
       {/* Product Name */}
-      <div>
-        <label className="block text-sm mb-1">Product Name</label>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Product Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Heavy Rexine Lehenga Bag"
         />
       </div>
 
-      {/* Category */}
-      <div>
-        <label className="block text-sm mb-1">Category</label>
+      {/* ✅ DYNAMIC CATEGORIES FROM FIRESTORE */}
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Category</label>
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2"
+          disabled={loadingCategories}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
-          <option value="">Select category</option>
-          <option>Lehenga Covers</option>
-          <option>Saree Covers</option>
-          <option>Gown Covers</option>
-          <option>Suit Covers</option>
-          <option>Garment Bags</option>
-          <option>Packaging Tray</option>
-          <option>Lehenga Box</option>
-          <option>Trousseau Lehenga Box</option>
-          <option>Custom Packaging</option>
-          <option>Others</option>
+          <option value="">
+            {loadingCategories ? "Loading categories..." : "Select category"}
+          </option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.name}>
+              {cat.name}
+            </option>
+          ))}
         </select>
       </div>
 
       {/* Price Type */}
-      <div>
-        <label className="block text-sm mb-1">Price Type</label>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Price Type</label>
         <select
           value={priceType}
           onChange={(e) =>
             setPriceType(e.target.value as "fixed" | "starting" | "on_request")
           }
-          className="w-full border rounded-lg px-3 py-2"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
         >
           <option value="starting">Starting Price</option>
           <option value="fixed">Fixed Price</option>
@@ -204,100 +212,118 @@ export default function AdminAddProductPage() {
 
       {/* Price */}
       {priceType !== "on_request" && (
-        <div>
-          <label className="block text-sm mb-1">Price (₹)</label>
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Price (₹)</label>
           <input
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
             placeholder="210"
           />
         </div>
       )}
 
       {/* MOQ */}
-      <div>
-        <label className="block text-sm mb-1">Minimum Order Quantity</label>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Minimum Order Quantity</label>
         <input
           value={moq}
           onChange={(e) => setMoq(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
           placeholder="50"
         />
       </div>
 
-      {/* Attributes */}
+      {/* ATTRIBUTES - MOBILE RESPONSIVE */}
       <div className="space-y-3">
-        <label className="block text-sm">Product Attributes</label>
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-gray-700">Product Attributes</label>
+          <button 
+            onClick={addAttribute}
+            className="px-3 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            + Add
+          </button>
+        </div>
 
-        {attributes.map((attr, index) => (
-          <div key={index} className="flex gap-2">
-            <input
-              className={`flex-1 border rounded-lg px-3 py-2 ${
-                FIXED_ATTRIBUTE_LABELS.includes(attr.label)
-                  ? "bg-gray-100 cursor-not-allowed"
-                  : ""
-              }`}
-              placeholder="Label (e.g. Material)"
-              value={attr.label}
-              disabled={FIXED_ATTRIBUTE_LABELS.includes(attr.label)}
-              onChange={(e) => updateAttribute(index, "label", e.target.value)}
-            />
+        <div className="space-y-3">
+          {attributes.map((attr, index) => (
+            <div key={index} className="bg-gray-50 p-3 rounded-xl border">
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                {/* Label Input */}
+                <div className="flex-1 min-w-0">
+                  <label className="text-xs text-gray-500 mb-1.5 block">Label</label>
+                  <input
+                    className={`w-full border px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 ${
+                      isFixedAttribute(attr.label)
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : ""
+                    }`}
+                    placeholder="Label (e.g. Material)"
+                    value={attr.label}
+                    disabled={isFixedAttribute(attr.label)}
+                    onChange={(e) => updateAttribute(index, "label", e.target.value)}
+                  />
+                </div>
 
-            <input
-              className="flex-1 border rounded-lg px-3 py-2"
-              placeholder={attr.placeholder || `Enter ${attr.label}`}
-              value={attr.value}
-              onChange={(e) => updateAttribute(index, "value", e.target.value)}
-            />
+                {/* Value Input */}
+                <div className="flex-1 min-w-0">
+                  <label className="text-xs text-gray-500 mb-1.5 block">Value</label>
+                  <input
+                    className="w-full border px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    placeholder={attr.placeholder || `Enter ${attr.label}`}
+                    value={attr.value}
+                    onChange={(e) => updateAttribute(index, "value", e.target.value)}
+                  />
+                </div>
 
-            {!FIXED_ATTRIBUTE_LABELS.includes(attr.label) && (
-              <button
-                onClick={() => removeAttribute(index)}
-                className="px-3 text-red-500"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        ))}
-
-        <button onClick={addAttribute} className="text-sm text-(--primary)">
-          + Add Attribute
-        </button>
+                {/* Remove Button */}
+                {!isFixedAttribute(attr.label) && (
+                  <button
+                    onClick={() => removeAttribute(index)}
+                    className="w-12 h-12 bg-red-500 text-white rounded-lg flex items-center justify-center text-sm hover:bg-red-600 transition-colors shrink-0"
+                    title="Remove attribute"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Description */}
-      <div>
-        <label className="block text-sm mb-1">Description</label>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Description</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 resize-vertical"
           rows={4}
           placeholder="Product description..."
         />
       </div>
-      {/* IMAGE UPLOAD */}
+
       {/* IMAGE UPLOAD */}
       <div className="space-y-3">
-        <label className="block text-sm font-medium">
+        <label className="block text-sm font-medium text-gray-700">
           Product Images (max 4)
         </label>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {imageFiles.map((file, index) => (
-            <div key={index} className="relative">
+            <div key={index} className="relative group">
               <img
                 src={URL.createObjectURL(file)}
                 alt="Preview"
-                className="h-24 w-full object-contain bg-white rounded border p-1"
+                className="h-24 w-full object-contain bg-white rounded-lg border p-1"
               />
               <button
                 onClick={() =>
                   setImageFiles(imageFiles.filter((_, i) => i !== index))
                 }
-                className="absolute top-1 right-1 bg-white text-red-600 text-xs px-1 rounded"
+                className="absolute top-1 right-1 bg-white text-red-600 text-xs px-2 py-1 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-all"
               >
                 ✕
               </button>
@@ -305,7 +331,7 @@ export default function AdminAddProductPage() {
           ))}
 
           {imageFiles.length < 4 && (
-            <label className="h-24 border-dashed border rounded flex items-center justify-center text-sm cursor-pointer">
+            <label className="h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-sm cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all group">
               + Add Image
               <input
                 type="file"
@@ -313,7 +339,7 @@ export default function AdminAddProductPage() {
                 multiple
                 hidden
                 onChange={(e) =>
-                  e.target.files && handleImageSelect(e.target.files)
+                  e.target.files && handleImageSelect(e.target.files!)
                 }
               />
             </label>
@@ -322,22 +348,23 @@ export default function AdminAddProductPage() {
       </div>
 
       {/* Submit */}
-      <div className="pt-4">
-        <button
-          onClick={handleSubmit}
-          disabled={saving}
-          className={`
-    px-6 py-3 rounded-lg text-white
-    ${saving ? "bg-gray-400 cursor-not-allowed" : "bg-(--primary)"}
-    flex items-center justify-center gap-2
-  `}
-        >
-          {saving && (
-            <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          )}
-          {saving ? "Saving..." : "Save Product"}
-        </button>
-      </div>
+      <button
+        onClick={handleSubmit}
+        disabled={saving}
+        className={`
+          w-full px-6 py-3 rounded-xl text-white font-medium text-lg
+          flex items-center justify-center gap-2 transition-all
+          ${saving 
+            ? "bg-gray-400 cursor-not-allowed" 
+            : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg transform hover:-translate-y-0.5"
+          }
+        `}
+      >
+        {saving && (
+          <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        )}
+        {saving ? "Saving..." : "Save Product"}
+      </button>
     </div>
   );
 }

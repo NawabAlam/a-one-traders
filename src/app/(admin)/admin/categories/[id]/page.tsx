@@ -13,12 +13,11 @@ export default function EditCategoryPage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [order, setOrder] = useState(0);
-
   const [images, setImages] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // REMOVED: isOthers and maxImages logic - ALL = 1 image
+  // ALL categories = 1 image
   const maxImages = 1;
 
   // LOAD CATEGORY
@@ -29,12 +28,16 @@ export default function EditCategoryPage() {
       if (!snap.exists()) return;
       const data: any = snap.data();
 
-      setName(data.name);
-      setSlug(data.slug);
-      setOrder(data.order);
+      setName(data.name || "");
+      setSlug(data.slug || "");
+      setOrder(data.order || 0);
 
       // Load first image (works for both image/images)
-      setImages(data.images && data.images.length > 0 ? [data.images[0]] : data.image ? [data.image] : []);
+      setImages(
+        data.images && data.images.length > 0 
+          ? [data.images[0]] 
+          : data.image ? [data.image] : []
+      );
     });
   }, [id]);
 
@@ -50,7 +53,7 @@ export default function EditCategoryPage() {
     setUploading(true);
     try {
       const url = await uploadCategoryImage(file, slug);
-      setImages((prev) => [...prev, url]);
+      setImages([url]); // Replace any existing image
     } finally {
       setUploading(false);
     }
@@ -58,7 +61,7 @@ export default function EditCategoryPage() {
 
   // REMOVE IMAGE
   const removeImage = (url: string) => {
-    setImages((prev) => prev.filter((i) => i !== url));
+    setImages([]);
   };
 
   // SAVE
@@ -72,80 +75,146 @@ export default function EditCategoryPage() {
 
     setSaving(true);
 
-    await updateDoc(doc(db, "categories", id as string), {
-      name,
-      order: Number(order),
-      image: images[0], // Single image for all
-    });
+    try {
+      await updateDoc(doc(db, "categories", id as string), {
+        name,
+        slug,
+        order: Number(order),
+        image: images[0], // Single image for all
+      });
 
-    setSaving(false);
-    alert("Category updated");
-    router.push("/admin/categories");
+      alert("✅ Category updated successfully");
+      router.push("/admin/categories");
+    } catch (error) {
+      console.error(error);
+      alert("❌ Failed to update category");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="max-w-xl mx-auto bg-white p-6 rounded-xl border space-y-4">
-      <h1 className="text-xl font-bold">Edit Category</h1>
+    <div className="max-w-xl mx-auto bg-white p-4 sm:p-6 rounded-xl border shadow-sm space-y-6">
+      <h1 className="text-2xl font-bold">Edit Category</h1>
 
-      <input
-        className="w-full border px-3 py-2 rounded"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
+      {/* Name Input */}
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Category Name</label>
+        <input
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Category name"
+        />
+      </div>
 
-      <input
-        type="number"
-        className="w-full border px-3 py-2 rounded"
-        value={order}
-        onChange={(e) => setOrder(Number(e.target.value))}
-        placeholder="Order"
-      />
+      {/* Slug Input */}
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Slug</label>
+        <input
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
+          placeholder="category-slug"
+        />
+      </div>
 
-      {/* IMAGE GRID */}
+      {/* Order Input */}
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Display Order</label>
+        <input
+          type="number"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={order}
+          onChange={(e) => setOrder(Number(e.target.value))}
+          placeholder="0"
+          min="0"
+        />
+      </div>
+
+      {/* IMAGE UPLOAD - Single Image */}
       <div className="space-y-3">
-        <div className="grid grid-cols-3 gap-3">
-          {images.map((img) => (
-            <div key={img} className="relative">
+        <label className="block text-sm font-medium text-gray-700">
+          Category Image (1 required)
+        </label>
+
+        <div className="space-y-3">
+          {/* Current Image */}
+          {images.length > 0 && (
+            <div className="relative group">
               <img
-                src={img}
-                className="h-24 w-full object-cover rounded border"
+                src={images[0]}
+                alt="Category"
+                className="w-full h-48 sm:h-56 object-cover rounded-xl border shadow-sm"
               />
               <button
-                onClick={() => removeImage(img)}
-                className="absolute top-1 right-1 bg-white text-red-600 text-xs px-1 rounded"
+                onClick={() => removeImage(images[0])}
+                className="absolute top-3 right-3 bg-white text-red-600 text-xs px-3 py-1.5 rounded-lg shadow-lg border opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50"
+                title="Remove image"
               >
                 ✕
               </button>
             </div>
-          ))}
+          )}
 
+          {/* Upload Area */}
           {images.length < maxImages && (
-            <label className="h-24 border-dashed border rounded flex items-center justify-center text-sm cursor-pointer">
-              {uploading ? "Uploading…" : "+ Add Image"}
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                disabled={uploading}
-                onChange={(e) =>
-                  e.target.files && uploadImage(e.target.files[0])
-                }
-              />
+            <label className="block w-full h-48 sm:h-56 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center text-sm cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all group">
+              {uploading ? (
+                <div className="text-center">
+                  <div className="h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  <div>Uploading...</div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-2xl flex items-center justify-center text-2xl">
+                      📷
+                    </div>
+                    <div className="font-medium text-gray-700">+ Add Category Image</div>
+                    <div className="text-xs text-gray-500 mt-1">Click to upload (JPG, PNG)</div>
+                  </div>
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    disabled={uploading}
+                    onChange={(e) =>
+                      e.target.files && uploadImage(e.target.files[0])
+                    }
+                  />
+                </>
+              )}
             </label>
           )}
         </div>
 
-        {/* REMOVED: Others specific message */}
+        {/* Image requirement notice */}
+        {!canSave && (
+          <p className="text-xs text-red-600 bg-red-50 p-2 rounded-lg">
+            ⚠️ Please upload exactly 1 category image to save
+          </p>
+        )}
       </div>
 
+      {/* Save Button */}
       <button
         onClick={save}
         disabled={saving || uploading || !canSave}
-        className={`px-6 py-2 rounded text-white ${
-          canSave ? "bg-(--primary)" : "bg-gray-400 cursor-not-allowed"
-        }`}
+        className={`
+          w-full px-6 py-3 rounded-xl text-white font-medium text-lg
+          flex items-center justify-center gap-2 transition-all
+          shadow-sm hover:shadow-lg transform hover:-translate-y-0.5
+          ${canSave && !saving && !uploading
+            ? "bg-blue-600 hover:bg-blue-700"
+            : "bg-gray-400 cursor-not-allowed"
+          }
+        `}
       >
-        {saving ? "Saving…" : "Save"}
+        {saving && (
+          <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        )}
+        {saving ? "Saving..." : "Save Category"}
       </button>
     </div>
   );

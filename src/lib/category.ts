@@ -4,17 +4,21 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  deleteDoc,  // ✅ ADDED
   orderBy,
   query,
+  addDoc,
+  getDoc,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { db, storage } from "./firebase";
 import { getAllProducts } from "./products";
+import { deleteObject, ref } from "firebase/storage";
 
 /* ================================
    TYPES
 ================================ */
 export type Category = {
-  id: string;              // 🔑 REQUIRED
+  id: string;               // 🔑 REQUIRED
   name: string;
   slug: string;
   order: number;
@@ -50,13 +54,60 @@ export async function getAllCategories(): Promise<Category[]> {
   const snap = await getDocs(q);
 
   return snap.docs.map((d) => ({
-    id: d.id,          // ✅ FIXED
+    id: d.id,           // ✅ FIXED
     ...(d.data() as Omit<Category, "id">),
   }));
 }
 
 /* ================================
-   CREATE / UPDATE CATEGORY
+   CREATE CATEGORY (NEW)
+================================ */
+export async function createCategory(category: Omit<Category, "id">) {
+  const newCategory = {
+    ...category,
+    createdAt: new Date().toISOString(),
+  };
+  
+  const ref = await addDoc(collection(db, "categories"), newCategory);
+  return { id: ref.id, ...newCategory };
+}
+
+/* ================================
+   DELETE CATEGORY (UPDATED!)
+================================ */
+export async function deleteCategory(id: string): Promise<void> {
+  // 1. Get category data first to find image URL
+  const categoryRef = doc(db, "categories", id);
+  const categorySnap = await getDoc(categoryRef);
+  
+  if (categorySnap.exists()) {
+    const data = categorySnap.data();
+    const imageUrl = data?.image;
+    
+    // 2. Delete Firestore document
+    await deleteDoc(categoryRef);
+    
+    // 3. Delete image from Storage if exists
+    if (imageUrl) {
+      try {
+        // Add these imports at top:
+        // import { getStorage, ref, deleteObject } from "firebase/storage";
+        // import { storage } from "./firebase";
+        
+        const imageRef = ref(storage, imageUrl);
+        await deleteObject(imageRef);
+      } catch (error) {
+        console.warn("Image already deleted or not found:", error);
+      }
+    }
+  } else {
+    throw new Error("Category not found");
+  }
+}
+
+
+/* ================================
+   UPDATE CATEGORY
 ================================ */
 export async function upsertCategory(category: Category) {
   const ref = doc(db, "categories", category.id);

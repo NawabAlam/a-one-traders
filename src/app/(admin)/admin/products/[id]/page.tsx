@@ -112,6 +112,14 @@ export default function AdminEditProductPage() {
     setAttributes(copy);
   };
 
+  const addAttribute = () => {
+    setAttributes([...attributes, { label: "", value: "" }]);
+  };
+
+  const removeAttribute = (index: number) => {
+    setAttributes(attributes.filter((_, i) => i !== index));
+  };
+
   if (loading) {
     return <div>Loading product…</div>;
   }
@@ -162,26 +170,57 @@ export default function AdminEditProductPage() {
         placeholder="Minimum Order Quantity"
       />
 
-      {/* ATTRIBUTES */}
-      <div className="space-y-2">
-        {attributes.map((a, i) => (
-          <div key={i} className="flex gap-2">
-            <input
-              className="flex-1 border px-2 py-1 rounded"
-              value={a.label}
-              onChange={(e) =>
-                updateAttr(i, "label", e.target.value)
-              }
-            />
-            <input
-              className="flex-1 border px-2 py-1 rounded"
-              value={a.value}
-              onChange={(e) =>
-                updateAttr(i, "value", e.target.value)
-              }
-            />
-          </div>
-        ))}
+      {/* ATTRIBUTES - RESPONSIVE */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium">Attributes</label>
+          <button
+            onClick={addAttribute}
+            className="text-sm text-blue-600 hover:text-blue-800 px-2 py-1 rounded"
+          >
+            + Add Attribute
+          </button>
+        </div>
+        
+        <div className="space-y-2">
+          {attributes.map((a, i) => (
+            <div key={i} className="bg-gray-50 p-3 rounded-lg border">
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                <div className="flex-1 min-w-0">
+                  <label className="text-xs text-gray-500 mb-1 block">Label</label>
+                  <input
+                    className="w-full border px-3 py-2 rounded text-sm"
+                    value={a.label}
+                    onChange={(e) =>
+                      updateAttr(i, "label", e.target.value)
+                    }
+                    placeholder="Label"
+                  />
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <label className="text-xs text-gray-500 mb-1 block">Value</label>
+                  <input
+                    className="w-full border px-3 py-2 rounded text-sm"
+                    value={a.value}
+                    onChange={(e) =>
+                      updateAttr(i, "value", e.target.value)
+                    }
+                    placeholder="Value"
+                  />
+                </div>
+                
+                <button
+                  onClick={() => removeAttribute(i)}
+                  className="sm:w-10 sm:h-10 w-12 h-12 bg-red-500 text-white rounded-lg flex items-center justify-center text-sm hover:bg-red-600 shrink-0"
+                  title="Remove attribute"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <textarea
@@ -207,7 +246,7 @@ export default function AdminEditProductPage() {
               />
               <button
                 onClick={() => removeImage(img)}
-                className="absolute top-1 right-1 bg-white text-red-600 text-xs px-1 rounded"
+                className="absolute top-1 right-1 bg-white text-red-600 text-xs px-1 rounded shadow"
               >
                 ✕
               </button>
@@ -215,7 +254,7 @@ export default function AdminEditProductPage() {
           ))}
 
           {images.length < 4 && (
-            <label className="h-24 border-dashed border rounded flex items-center justify-center text-sm cursor-pointer">
+            <label className="h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-sm cursor-pointer hover:border-gray-400 transition-colors bg-gray-50">
               {uploading ? "Uploading…" : "+ Add Image"}
               <input
                 type="file"
@@ -233,7 +272,7 @@ export default function AdminEditProductPage() {
 
       <button
         onClick={save}
-        className="px-6 py-2 rounded-lg bg-(--primary) text-white"
+        className="w-full px-6 py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
       >
         Save Changes
       </button>
