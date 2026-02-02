@@ -20,6 +20,7 @@ export default function Footer() {
           <ul className="space-y-2 text-[color:var(--text-secondary)]">
             <li><a href="/" className="hover:text-[color:var(--primary)]">Home</a></li>
             <li><a href="/products" className="hover:text-[color:var(--primary)]">Products</a></li>
+            <li><a href="/categories" className="hover:text-[color:var(--primary)]">Categories</a></li>
             <li><a href="/about" className="hover:text-[color:var(--primary)]">About Us</a></li>
             <li><a href="/contact" className="hover:text-[color:var(--primary)]">Contact</a></li>
           </ul>
