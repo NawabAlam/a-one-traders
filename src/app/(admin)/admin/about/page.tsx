@@ -38,8 +38,9 @@ export default function AdminAboutPage() {
 
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
-  // Collapsible state
+  // Collapsible states
   const [isReviewsExpanded, setIsReviewsExpanded] = useState(false);
+  const [isTestimonialsExpanded, setIsTestimonialsExpanded] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -117,13 +118,13 @@ export default function AdminAboutPage() {
       />
 
       {/* HIGHLIGHTS */}
-      <div className="space-y-2">
-        <label className="font-medium">Highlights</label>
+      <div className="space-y-3">
+        <label className="font-medium text-2xl">Highlights</label>
 
         {points.map((p, i) => (
           <input
             key={i}
-            className="w-full border rounded px-3 py-2"
+            className={`w-full border rounded px-3 py-2 ${i === 0 ? "mt-4" : ""}`}
             value={p}
             onChange={(e) => {
               const copy = [...points];
@@ -133,12 +134,7 @@ export default function AdminAboutPage() {
           />
         ))}
 
-        <button
-          onClick={() => setPoints([...points, ""])}
-          className="text-sm text-(--primary)"
-        >
-          + Add Point
-        </button>
+        <button>+ Add Point</button>
       </div>
 
       {/* IMAGE */}
@@ -158,170 +154,198 @@ export default function AdminAboutPage() {
         </label>
       </div>
 
-      {/* REVIEWS - COLLAPSIBLE */}
-      <div>
-        <button
-          onClick={() => setIsReviewsExpanded(!isReviewsExpanded)}
-          className="w-full flex items-center justify-between text-left p-4 border rounded-lg hover:bg-gray-50 transition-all text-lg font-semibold"
-        >
-          <span>Reviews & Ratings</span>
-          <span>{isReviewsExpanded ? "−" : "+"}</span>
-        </button>
+      {/* 🔥 REVIEWS & RATINGS - COLLAPSED BY DEFAULT, NOTHING VISIBLE */}
+      <div className="bg-white border rounded-xl overflow-hidden">
+        {/* TOP HEADER */}
+        <div className="px-4 py-3 border-b font-semibold flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">Reviews & Ratings</span>
+            <button
+              onClick={() => setIsReviewsExpanded(!isReviewsExpanded)}
+              className="px-2 py-1 text-xs rounded-full bg-red-300 hover:bg-red-200 transition-colors text-black font-medium"
+              title={isReviewsExpanded ? "Collapse" : "Expand"}
+            >
+              {isReviewsExpanded ? "Collapse −" : "Expand +"}
+            </button>
+          </div>
+          <span className="text-sm text-gray-500">
+            {testimonials.length} testimonials
+          </span>
+        </div>
 
+        {/* ✅ COLLAPSED: ONLY SHOW EXPAND BUTTON - NO REVIEWS */}
+        {!isReviewsExpanded && (
+          <div className="border-t bg-gray-50">
+            <button
+              onClick={() => setIsReviewsExpanded(true)}
+              className="w-full text-left px-4 py-3 text-sm text-blue-600 hover:text-blue-800 hover:bg-gray-100 font-medium transition-colors"
+            >
+              Show ratings & {testimonials.length} reviews (+)
+            </button>
+          </div>
+        )}
+
+        {/* ✅ EXPANDED: FULL CONTENT + BOTTOM COLLAPSE */}
         {isReviewsExpanded && (
-          <div className="mt-4 space-y-6 p-6 bg-gray-50 border rounded-lg">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <input
-                type="number"
-                step="0.1"
-                className="border rounded px-3 py-2"
-                placeholder="Average Rating"
-                value={averageRating}
-                onChange={(e) => setAverageRating(Number(e.target.value))}
-              />
-
-              <input
-                type="number"
-                className="border rounded px-3 py-2"
-                placeholder="Total Reviews"
-                value={totalReviews}
-                onChange={(e) => setTotalReviews(Number(e.target.value))}
-              />
-            </div>
-
-            {/* STAR BREAKDOWN */}
-            <div className="space-y-2">
-              <label className="font-medium">Star Breakdown (%)</label>
-              {[5, 4, 3, 2, 1].map((s) => (
+          <>
+            <div className="p-6 space-y-6 bg-gray-50">
+              {/* AVERAGE RATING & TOTAL REVIEWS */}
+              <div className="grid sm:grid-cols-2 gap-4">
                 <input
-                  key={s}
                   type="number"
-                  className="border rounded px-3 py-2 w-full"
-                  placeholder={`${s} Star`}
-                  value={breakdown[s as keyof typeof breakdown]}
-                  onChange={(e) =>
-                    setBreakdown({
-                      ...breakdown,
-                      [s]: Number(e.target.value),
-                    })
-                  }
+                  step="0.1"
+                  className="border rounded px-3 py-2"
+                  placeholder="Average Rating"
+                  value={averageRating}
+                  onChange={(e) => setAverageRating(Number(e.target.value))}
                 />
-              ))}
-            </div>
-
-            {/* SATISFACTION */}
-            <div className="space-y-2">
-              <label className="font-medium">User Satisfaction (%)</label>
-
-              {Object.keys(satisfaction).map((key) => (
                 <input
-                  key={key}
                   type="number"
-                  className="border rounded px-3 py-2 w-full"
-                  placeholder={key}
-                  value={satisfaction[key as keyof typeof satisfaction]}
-                  onChange={(e) =>
-                    setSatisfaction({
-                      ...satisfaction,
-                      [key]: Number(e.target.value),
-                    })
-                  }
+                  className="border rounded px-3 py-2"
+                  placeholder="Total Reviews"
+                  value={totalReviews}
+                  onChange={(e) => setTotalReviews(Number(e.target.value))}
                 />
-              ))}
-            </div>
+              </div>
 
-            {/* TESTIMONIALS */}
-            <div className="space-y-4">
-              <label className="font-medium">Customer Reviews</label>
-
-              {testimonials.map((t, i) => (
-                <div key={i} className="border rounded p-4 space-y-2">
+              {/* STAR BREAKDOWN */}
+              <div className="space-y-2">
+                <label className="font-medium">Star Breakdown (%)</label>
+                {[5, 4, 3, 2, 1].map((s) => (
                   <input
-                    className="w-full border rounded px-2 py-1"
-                    placeholder="Name"
-                    value={t.name}
-                    onChange={(e) => {
-                      const copy = [...testimonials];
-                      copy[i].name = e.target.value;
-                      setTestimonials(copy);
-                    }}
-                  />
-
-                  <input
-                    className="w-full border rounded px-2 py-1"
-                    placeholder="Location"
-                    value={t.location}
-                    onChange={(e) => {
-                      const copy = [...testimonials];
-                      copy[i].location = e.target.value;
-                      setTestimonials(copy);
-                    }}
-                  />
-
-                  <input
+                    key={s}
                     type="number"
-                    className="w-full border rounded px-2 py-1"
-                    placeholder="Rating (1–5)"
-                    value={t.rating}
-                    onChange={(e) => {
-                      const copy = [...testimonials];
-                      copy[i].rating = Number(e.target.value);
-                      setTestimonials(copy);
-                    }}
-                  />
-
-                  <input
-                    className="w-full border rounded px-2 py-1"
-                    placeholder="Product"
-                    value={t.product}
-                    onChange={(e) => {
-                      const copy = [...testimonials];
-                      copy[i].product = e.target.value;
-                      setTestimonials(copy);
-                    }}
-                  />
-
-                  <textarea
-                    className="w-full border rounded px-2 py-1"
-                    placeholder="Comment (optional)"
-                    value={t.comment}
-                    onChange={(e) => {
-                      const copy = [...testimonials];
-                      copy[i].comment = e.target.value;
-                      setTestimonials(copy);
-                    }}
-                  />
-
-                  <button
-                    onClick={() =>
-                      setTestimonials(testimonials.filter((_, x) => x !== i))
+                    className="border rounded px-3 py-2 w-full"
+                    placeholder={`${s} Star`}
+                    value={breakdown[s as keyof typeof breakdown]}
+                    onChange={(e) =>
+                      setBreakdown({
+                        ...breakdown,
+                        [s]: Number(e.target.value),
+                      })
                     }
-                    className="text-sm text-red-600"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
+                  />
+                ))}
+              </div>
 
+              {/* SATISFACTION */}
+              <div className="space-y-2">
+                <label className="font-medium">User Satisfaction (%)</label>
+                {Object.keys(satisfaction).map((key) => (
+                  <input
+                    key={key}
+                    type="number"
+                    className="border rounded px-3 py-2 w-full"
+                    placeholder={key}
+                    value={satisfaction[key as keyof typeof satisfaction]}
+                    onChange={(e) =>
+                      setSatisfaction({
+                        ...satisfaction,
+                        [key]: Number(e.target.value),
+                      })
+                    }
+                  />
+                ))}
+              </div>
+
+              {/* TESTIMONIALS SECTION */}
+              <div className="space-y-4">
+                <label className="font-medium">Customer Reviews</label>
+
+                {testimonials.map((t, i) => (
+                  <div key={i} className="border rounded p-4 space-y-2">
+                    <input
+                      className="w-full border rounded px-2 py-1"
+                      placeholder="Name"
+                      value={t.name}
+                      onChange={(e) => {
+                        const copy = [...testimonials];
+                        copy[i].name = e.target.value;
+                        setTestimonials(copy);
+                      }}
+                    />
+                    <input
+                      className="w-full border rounded px-2 py-1"
+                      placeholder="Location"
+                      value={t.location}
+                      onChange={(e) => {
+                        const copy = [...testimonials];
+                        copy[i].location = e.target.value;
+                        setTestimonials(copy);
+                      }}
+                    />
+                    <input
+                      type="number"
+                      className="w-full border rounded px-2 py-1"
+                      placeholder="Rating (1-5)"
+                      value={t.rating}
+                      onChange={(e) => {
+                        const copy = [...testimonials];
+                        copy[i].rating = Number(e.target.value);
+                        setTestimonials(copy);
+                      }}
+                    />
+                    <input
+                      className="w-full border rounded px-2 py-1"
+                      placeholder="Product"
+                      value={t.product}
+                      onChange={(e) => {
+                        const copy = [...testimonials];
+                        copy[i].product = e.target.value;
+                        setTestimonials(copy);
+                      }}
+                    />
+                    <textarea
+                      className="w-full border rounded px-2 py-1"
+                      placeholder="Comment (optional)"
+                      value={t.comment}
+                      onChange={(e) => {
+                        const copy = [...testimonials];
+                        copy[i].comment = e.target.value;
+                        setTestimonials(copy);
+                      }}
+                    />
+                    <button
+                      onClick={() =>
+                        setTestimonials(testimonials.filter((_, x) => x !== i))
+                      }
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  onClick={() =>
+                    setTestimonials([
+                      ...testimonials,
+                      {
+                        name: "",
+                        location: "",
+                        rating: 5,
+                        product: "",
+                        comment: "",
+                      },
+                    ])
+                  }
+                  className="text-sm text-(--primary)"
+                >
+                  + Add Review
+                </button>
+              </div>
+            </div>
+
+            {/* BOTTOM COLLAPSE BUTTON */}
+            <div className="border-t bg-gray-50">
               <button
-                onClick={() =>
-                  setTestimonials([
-                    ...testimonials,
-                    {
-                      name: "",
-                      location: "",
-                      rating: 5,
-                      product: "",
-                      comment: "",
-                    },
-                  ])
-                }
-                className="text-sm text-(--primary)"
+                onClick={() => setIsReviewsExpanded(false)}
+                className="w-full text-left px-4 py-3 text-sm text-red-600 hover:text-red-800 hover:bg-gray-100 font-medium transition-colors"
               >
-                + Add Review
+                Collapse Reviews & Ratings (−)
               </button>
             </div>
-          </div>
+          </>
         )}
       </div>
 
